@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@types/node": "^18.15.11",
     "@types/react-modal": "^3.13.1",
     "@types/styled-components": "^5.1.26",
     "papercss": "^1.9.1",
