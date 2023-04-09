@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useState } from "react";
 import styled from "styled-components";
-import { DIMENSIONS, PLAYER_X, PLAYER_O, SQUARE_DIMS, GAME_STATES } from "../constants";
+import { DIMENSIONS, PLAYER_X, PLAYER_O, SQUARE_DIMS, GAME_STATES, DRAW } from "../constants";
+import Board from "./Board";
 import { getRandomInt, switchPlayer } from "../utils/utils";
  
-const emptyGrid = new Array(DIMENSIONS ** 2).fill(null);
+const emptyGrid = new Array(DIMENSIONS ** 2).fill(null); 
+const board = new Board();
  
 const TicTacToe = () => {
     const [grid, setGrid] = useState(emptyGrid)
@@ -14,6 +16,7 @@ const TicTacToe = () => {
     })
 
     const [nextMove, setNextMove] = useState<null|number>(null)
+    const [winner, setWinner] = useState<null | string>(null);
 
     const choosePlayer = (option: number) => {
         setPlayers({ human: option, ai: switchPlayer(option) });
@@ -52,6 +55,11 @@ const TicTacToe = () => {
        
     }, [move, grid, players]);
 
+    const startNewGame = () => {
+        setGameState(GAME_STATES.notStarted);
+        setGrid(emptyGrid);
+    };
+
     useEffect(() => {
         let timeout: NodeJS.Timeout;
         if ( nextMove !== null && nextMove === players.ai && gameState !== GAME_STATES.over ) {
@@ -61,37 +69,79 @@ const TicTacToe = () => {
           }, 500);
         }
         return () => timeout && clearTimeout(timeout);
-    }, [nextMove, aiMove, players.ai, gameState]);
-    
 
-    return gameState === GAME_STATES.notStarted ? (
-        <div>
-          <Inner>
-            <p>Choose your player</p>
-            <ButtonRow>
-              <button onClick={() => choosePlayer(PLAYER_X)}>X</button>
-              <p>or</p>
-              <button onClick={() => choosePlayer(PLAYER_O)}>O</button>
-            </ButtonRow>
-          </Inner>
-        </div>
-      )
-    
-    : (
-        <Container dims={DIMENSIONS}>
-            {grid.map((value, index) => {
-                const isActive = value !== null;
+        }, [nextMove, aiMove, players.ai, gameState]
+    );
 
-                return (
-                    <Square key={index} onClick={() => humanMove(index)}>
-                    {isActive && <Marker>{value === PLAYER_X ? "X" : "O"}</Marker>}
+    useEffect(() => {
+        const boardWinner = board.getWinner(grid);
+        const declareWinner = (winner: number) => {
+          let winnerStr = "";
+          switch (winner) {
+            case PLAYER_X:
+              winnerStr = "Player X wins!";
+              break;
+            case PLAYER_O:
+              winnerStr = "Player O wins!";
+              break;
+            case DRAW:
+            default:
+              winnerStr = "It's a draw";
+          }
+          setGameState(GAME_STATES.over);
+          setWinner(winnerStr);
+        };
+     
+        if (boardWinner !== null && gameState !== GAME_STATES.over) {
+          declareWinner(boardWinner);
+        }
+        }, [gameState, grid, nextMove]
+    );
+    
+    switch (gameState) {
+        case GAME_STATES.notStarted:
+        default:
+            return (
+                <div>
+                <Inner>
+                    <p>Choose your player</p>
+                    <ButtonRow>
+                    <button onClick={() => choosePlayer(PLAYER_X)}>X</button>
+                    <p>or</p>
+                    <button onClick={() => choosePlayer(PLAYER_O)}>O</button>
+                    </ButtonRow>
+                </Inner>
+                </div>
+            );
+            
+        case GAME_STATES.inProgress:
+            return (
+                <Container dims={DIMENSIONS}>
+                {grid.map((value, index) => {
+                    const isActive = value !== null;
+        
+                    return (
+                    <Square
+                        key={index}
+                        onClick={() => humanMove(index)}
+                    >
+                        {isActive && <Marker>{value === PLAYER_X ? "X" : "O"}</Marker>}
                     </Square>
-                );
-            })}
-        </Container>
-    )
-}
+                    );
+                })}
+                </Container>
+            );
 
+        case GAME_STATES.over:
+            return (
+                <div>
+                <p>{winner}</p>
+                <button onClick={startNewGame}>Start over</button>
+                </div>
+            );
+    }
+
+}
 const Container = styled.div<{ dims: number }>`
   display: flex;
   justify-content: center;
