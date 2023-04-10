@@ -3,6 +3,7 @@ import styled from "styled-components";
 import { DIMENSIONS, PLAYER_X, PLAYER_O, SQUARE_DIMS, GAME_STATES, DRAW, GAME_MODES } from "../constants";
 import Board from "./Board";
 import { getRandomInt, switchPlayer, minimax } from "../utils/utils";
+import { border } from "../styles";
  
 const emptyGrid = new Array(DIMENSIONS ** 2).fill(null); 
 const board = new Board();
@@ -14,6 +15,7 @@ const TicTacToe = () => {
     const [mode, setMode] = useState(GAME_MODES.medium)
     const [nextMove, setNextMove] = useState<null|number>(null)
     const [winner, setWinner] = useState<null | string>(null);
+    const [isOver, setIsOver] = useState(false)
 
     const choosePlayer = (option: number) => {
         setPlayers({ human: option, ai: switchPlayer(option) });
@@ -79,8 +81,9 @@ const TicTacToe = () => {
     }, [move, grid, players, mode]);
 
     const startNewGame = () => {
-        setGameState(GAME_STATES.notStarted);
-        setGrid(emptyGrid);
+      setIsOver(false)
+      setGameState(GAME_STATES.notStarted);
+      setGrid(emptyGrid);
     };
 
     const changeMode = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -115,8 +118,11 @@ const TicTacToe = () => {
             default:
               winnerStr = "It's a draw";
           }
-          setGameState(GAME_STATES.over);
-          setWinner(winnerStr);
+          setIsOver(true);
+          setTimeout(() => {
+            setGameState(GAME_STATES.over);
+            setWinner(winnerStr);
+          }, 1000);
         };
      
         if (boardWinner !== null && gameState !== GAME_STATES.over) {
@@ -155,18 +161,25 @@ const TicTacToe = () => {
         case GAME_STATES.inProgress:
             return (
                 <Container dims={DIMENSIONS}>
-                {grid.map((value, index) => {
-                    const isActive = value !== null;
-        
-                    return (
-                    <Square
-                        key={index}
-                        onClick={() => humanMove(index)}
-                    >
-                        {isActive && <Marker>{value === PLAYER_X ? "X" : "O"}</Marker>}
-                    </Square>
-                    );
-                })}
+                  {grid.map((value, index) => {
+                      const isActive = value !== null;
+          
+                      return (
+                      <Square
+                          key={index}
+                          onClick={() => humanMove(index)}
+                      >
+                          {isActive && <Marker>{value === PLAYER_X ? "X" : "O"}</Marker>}
+                      </Square>
+                      );
+                  })}
+
+                  <Strikethrough
+                    styles={
+                      isOver ? board.getStrikethroughStyles() : ""
+                    }
+                  />
+
                 </Container>
             );
 
@@ -194,13 +207,23 @@ const Square = styled.div`
   align-items: center;
   width: ${SQUARE_DIMS}px;
   height: ${SQUARE_DIMS}px;
-  border: 1px solid black;
+  ${border}; // Adding new border styles
  
   &:hover {
     cursor: pointer;
   }
 `;
  
+ 
+const Strikethrough = styled.div<{ styles: string | null }>`
+  position: absolute;
+  ${({ styles }) => styles}
+  background-color: indianred;
+  height: 5px;
+  width: ${({ styles }) => !styles && "0px"};
+`;
+
+
 const Marker = styled.p`
   font-size: 68px;
 `;
