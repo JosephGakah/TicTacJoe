@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import styled from "styled-components";
-import { DIMENSIONS, PLAYER_X, PLAYER_O, SQUARE_DIMS, GAME_STATES, DRAW } from "../constants";
+import { DIMENSIONS, PLAYER_X, PLAYER_O, SQUARE_DIMS, GAME_STATES, DRAW, GAME_MODES } from "../constants";
 import Board from "./Board";
 import { getRandomInt, switchPlayer, minimax } from "../utils/utils";
  
@@ -10,11 +10,8 @@ const board = new Board();
 const TicTacToe = () => {
     const [grid, setGrid] = useState(emptyGrid)
     const [gameState, setGameState] = useState(GAME_STATES.notStarted)
-    const [players, setPlayers] = useState<Record<string, number | null>>({
-        human: null,
-        ai: null
-    })
-
+    const [players, setPlayers] = useState<Record<string, number | null>>({human: null, ai: null})
+    const [mode, setMode] = useState(GAME_MODES.medium)
     const [nextMove, setNextMove] = useState<null|number>(null)
     const [winner, setWinner] = useState<null | string>(null);
 
@@ -45,20 +42,49 @@ const TicTacToe = () => {
     };
  
     const aiMove = useCallback(() => {
+      // Important to pass a copy of the grid here
       const board = new Board(grid.concat());
-      const index = board.isEmpty(grid)
-        ? getRandomInt(0, 8)
-        : minimax(board, players.ai!)[1];
-     
-      if (index !== null && !grid[index]) {
-        move(index, players.ai);
+      const emptyIndices = board.getEmptySquares(grid);
+      let index;
+      switch (mode) {
+        case GAME_MODES.easy:
+          do {
+            index = getRandomInt(0, 8);
+          } while (!emptyIndices.includes(index));
+          break;
+        // Medium level is approx. half of the moves are Minimax and the other half random
+        case GAME_MODES.medium:
+          const smartMove = !board.isEmpty(grid) && Math.random() < 0.5;
+          if (smartMove) {
+            index = minimax(board, players.ai!)[1];
+          } else {
+            do {
+              index = getRandomInt(0, 8);
+            } while (!emptyIndices.includes(index));
+          }
+          break;
+        case GAME_MODES.difficult:
+        default:
+          index = board.isEmpty(grid)
+            ? getRandomInt(0, 8)
+            : minimax(board, players.ai!)[1];
+      }
+      
+      if (index && !grid[index]) {
+        if (players.ai !== null) {
+          move(index, players.ai);
+        }
         setNextMove(players.human);
       }
-    }, [move, grid, players])
+    }, [move, grid, players, mode]);
 
     const startNewGame = () => {
         setGameState(GAME_STATES.notStarted);
         setGrid(emptyGrid);
+    };
+
+    const changeMode = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      setMode(e.target.value);
     };
 
     useEffect(() => {
@@ -105,6 +131,17 @@ const TicTacToe = () => {
             return (
                 <div>
                 <Inner>
+                    <p>Select difficulty</p>
+                    <select onChange={changeMode} value={mode}>
+                      {Object.keys(GAME_MODES).map(key => {
+                        const gameMode = GAME_MODES[key];
+                        return (
+                          <option key={gameMode} value={gameMode}>
+                            {key}
+                          </option>
+                        );
+                      })}
+                    </select>
                     <p>Choose your player</p>
                     <ButtonRow>
                     <button onClick={() => choosePlayer(PLAYER_X)}>X</button>
